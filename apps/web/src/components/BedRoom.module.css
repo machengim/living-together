@@ -1,0 +1,60 @@
+.background {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  min-height: 100dvh;
+  overflow: hidden;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.missionaryImage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  max-width: min(90vw, 1520px);
+  max-height: 90dvh;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.settingsButton {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 2;
+  padding: 10px 16px;
+  border: 1px solid rgb(255 255 255 / 50%);
+  border-radius: 6px;
+  color: white;
+  background: rgb(0 0 0 / 65%);
+  cursor: pointer;
+  font: inherit;
+}
+
+.settingsButton:hover,
+.settingsButton:focus-visible {
+  background: rgb(0 0 0 / 85%);
+}
+
+.backButton {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1;
+  padding: 12px 24px;
+  border: 1px solid rgb(255 255 255 / 50%);
+  border-radius: 6px;
+  color: white;
+  background: rgb(0 0 0 / 65%);
+  cursor: pointer;
+  font: inherit;
+}
+
+.backButton:hover,
+.backButton:focus-visible {
+  background: rgb(0 0 0 / 85%);
+}

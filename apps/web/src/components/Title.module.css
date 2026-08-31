@@ -1,0 +1,45 @@
+.title {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  min-height: 100dvh;
+  overflow: hidden;
+  background-image: url('../assets/new/title.png');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+@media (max-width: 600px) {
+  .title {
+    background-image: url('../assets/new/title-mobile.png');
+  }
+}
+
+.actions {
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  transform: translateY(-50%);
+}
+
+.startButton,
+.settingsButton {
+  padding: 12px 28px;
+  border: 1px solid rgb(255 255 255 / 60%);
+  border-radius: 6px;
+  color: white;
+  background: rgb(0 0 0 / 65%);
+  cursor: pointer;
+  font: inherit;
+}
+
+.startButton:hover,
+.startButton:focus-visible,
+.settingsButton:hover,
+.settingsButton:focus-visible {
+  background: rgb(0 0 0 / 85%);
+}
