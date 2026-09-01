@@ -5,6 +5,7 @@ import express from "express";
 import webpush from "web-push";
 import { WebSocket, WebSocketServer } from "ws";
 import { createAiProvider } from "./providers/provider-factory.js";
+import type { ChatMessage } from "./providers/ai-provider.js";
 
 const app = express();
 const server = createServer(app);
@@ -15,6 +16,7 @@ const proactiveMessageTimers = new Map<WebSocket, ReturnType<typeof setInterval>
 const pushSubscriptions = new Map<string, webpush.PushSubscription>();
 let disconnectedPushSent = false;
 const aiProvider = createAiProvider();
+const conversationHistory: ChatMessage[] = [];
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 const vapidSubject = process.env.VAPID_SUBJECT;
@@ -197,6 +199,8 @@ async function sendDisconnectedPushNotification() {
 }
 
 app.post("/message", async (request, response) => {
+  console.log("[API] POST /message received");
+
   if (typeof request.body !== "string" || !request.body.trim()) {
     response.status(400).json({
       error: "Request body must be a non-empty string",
@@ -205,11 +209,35 @@ app.post("/message", async (request, response) => {
   }
 
   const userMessage = request.body.trim();
+  conversationHistory.push({ role: "user", content: userMessage });
+  const recentMessages = conversationHistory.slice(-6);
+
+  console.log(
+    "AI provider request:",
+    JSON.stringify(
+      {
+        provider: process.env.AI_PROVIDER || "openai",
+        messages: recentMessages,
+      },
+      null,
+      2,
+    ),
+  );
 
   void aiProvider
-    .generateReply(userMessage)
+    .generateReply(recentMessages)
     .then((assistantMessage) => {
+      conversationHistory.push({ role: "assistant", content: assistantMessage });
       broadcastMessage(assistantMessage);
+
+      void aiProvider
+        .extractMemories(conversationHistory.slice(-6))
+        .then((memories) => {
+          console.log("Normalized memory suggestions:", JSON.stringify(memories, null, 2));
+        })
+        .catch((error) => {
+          console.error("Memory extraction failed:", error);
+        });
     })
     .catch((error) => {
       console.error("AI provider request failed:", error);

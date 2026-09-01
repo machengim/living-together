@@ -138,6 +138,31 @@
   position: relative;
 }
 
+.characterHitArea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  clip-path: polygon(
+    64% 8%, 76% 10%, 85% 18%, 88% 30%, 90% 50%, 96% 75%,
+    93% 90%, 87% 95%, 84% 100%, 8% 100%, 9% 94%, 15% 89%,
+    37% 87%, 45% 72%, 47% 55%, 44% 40%, 46% 24%, 53% 13%
+  );
+}
+
+.characterHitArea:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 4px;
+}
+
+.characterHitArea:disabled {
+  cursor: default;
+}
+
 .teaseImage {
   position: fixed;
   top: 50%;
@@ -156,32 +181,6 @@
   z-index: 4;
   background: rgb(0 0 0 / 15%);
   pointer-events: none;
-}
-
-.hitArea {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.hitArea polygon {
-  fill: transparent;
-  pointer-events: all;
-  cursor: pointer;
-  outline: none;
-}
-
-.hitAreaDisabled polygon {
-  pointer-events: none;
-  cursor: default;
-}
-
-.hitArea polygon:focus-visible {
-  fill: rgb(255 255 255 / 10%);
-  stroke: white;
-  stroke-width: 8;
 }
 
 .characterBubbleStack {

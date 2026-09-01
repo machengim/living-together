@@ -10,11 +10,14 @@ const replies = [
 
 export function createFakeProvider(): AiProvider {
   return {
-    async generateReply(_message) {
+    async generateReply(_messages) {
       await new Promise((resolve) => setTimeout(resolve, 700));
 
       const replyIndex = Math.floor(Math.random() * replies.length);
       return replies[replyIndex];
+    },
+    async extractMemories(_messages) {
+      return [];
     },
   };
 }

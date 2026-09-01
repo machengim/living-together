@@ -46,6 +46,99 @@ what's your suggestion for responsive? on the phone the background room and the 
 do it
 
 
+what's next?
+
+
+skip this step for now. how many steps left?
+
+
+where can i find the code for normalization
+
+
+where is this function used?
+
+
+what next?
+
+
+as a prototype, no db for now. skip this step. what's next?
+
+
+how to get the character current emotional state?
+
+
+are these value also get from an ai provider by analyzing the recent conversation?
+
+
+what are the possible values for mood?
+
+
+do it
+
+
+what to do next step?
+
+
+skip this one. I'm asking you about the previous target about constructing prompt, which step are we in now? or we have finished?
+
+
+it's in there, i saw in the log. what's the next step to do?
+
+
+how to do it?
+
+
+skip this step, doesn't matter, what's next?
+
+
+ok, add the scene info
+
+
+what next
+
+
+how do you know which info worth keeping?
+
+
+is it also depends on ai provider to determine whether this info worthe keeping in memory?
+
+
+how do the app define the rules?
+
+
+what if the ai provider returns info in different way? say your code checks 'personal_fact', while the ai provider returns 'personal_info'?
+
+
+ok do it
+
+
+what next?
+
+
+do it
+
+
+what needs to do now?
+
+
+no it doesn't. can you log the request that sends to ai provider so i can debug in the console?
+
+
+it didn't log out the request
+
+
+still not working
+
+
+not showing. only show the gemini response. are you adding it to the wrong provider
+
+
+still not seen the request log
+
+
+not showing
+
+
 ok, go ahead with the plan you suggested
 
 
@@ -116,6 +209,18 @@ change step 5: always mark flag as true, even the push fails. and log the result
 
 
 how do i test this feature?
+
+
+the current project use responsive for pc and mobile, but it feels too much to manage it, do you think it should seperate the mobile view from pc view?
+
+
+if we start over again, what do you suggest for the web app structure?
+
+
+what's ai provider? we have jotai to manage state
+
+
+only use jotai, never use react context, now upate the plan
 
 
 
@@ -694,3 +799,87 @@ add a .gitignore file to this project for nodejs app
 
 
 move staged all git staged files back to working tree
+
+
+how to generate a ssh key for github on a debian machine
+
+
+got this error on another machine after git clone this project repo: cause: Error: Cannot find module '@rolldown/binding-linux-x64-gnu'
+      Require stack:
+      - /home/ma/Applications/living-together/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs
+          at file:///home/ma/Applications/living-together/node_modules/.pnpm/rolldown@1.2.6/node_modules/rolldown/dist/shared/binding-CtPG-2KR.mjs:494:18
+
+
+why this keeps happening? did i do sth wrong?
+
+
+why it's set optional on my machine while it can fail on other machine? that doesn't make sense
+
+
+22 was installed, and node --version
+v22.11.0, why it's using 20?
+
+
+my current machine is using 24, is it better to install 24 on the other machine as well
+
+
+if i have all the game assets from game 'Naughty living together', can you reproduce the game for me?
+
+
+this is a role play chatbot app. give me a plan how to construct prompt message payload to ai provider? the message should include the the relationship between user and bot, the current date and time, a few round of previous conversation, current input, and may be something else you think worth adding.
+
+
+that's too much to think in one go. explain to me what to do step by step in your plan.
+
+
+I told you, only give me one step every time, we only proceed to next one when the previous is done
+
+
+do it, with system content 'You are Rica, the girlfriend of the user. Stay in character.'
+
+
+next step
+
+
+what do we need to do in next step?
+
+
+give me a plan for this step first
+
+
+The server app doesn't store history conversation right now, is it?
+
+
+how?
+
+
+do it
+User: need a docker compose file to create a postgres for this app, give me a plan
+
+
+what are you talking about: curl 127.0.0.1:3000 (response: Cannot GET /)
+
+
+only shows old response message
+
+
+can you fix it or not? it's been like 10 times and it's not working?
+
+
+i'm on linux and without lsof
+
+
+you can run these commands
+
+
+now stop the server you run
+
+
+it shows a response like this: '哼，还笑！又想学我说话是吧？(${user}的昵称)坏蛋~ '
+
+
+do it
+
+
+switch back the behaviour when clicking on the character, it will show the menu as previous, no matter where it's clicked on the character
+the clickable area is too big. it should be close to the character space

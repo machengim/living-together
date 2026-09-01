@@ -32,8 +32,6 @@ type TeaseAction =
   | 'touchBreast'
   | 'touchPussy'
 
-type CharacterBodyPart = 'face' | 'chest' | 'leg'
-
 type ChatBubble = {
   id: string
   text: string
@@ -60,12 +58,6 @@ const teaseImages: Record<TeaseAction, string> = {
   touchAss: touchAssImage,
   touchBreast: touchBreastImage,
   touchPussy: touchPussyImage,
-}
-
-const bodyPartTeaseActions: Record<CharacterBodyPart, TeaseAction> = {
-  face: 'kiss',
-  chest: 'touchBreast',
-  leg: 'touchThigh',
 }
 
 function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: LivingRoomProps) {
@@ -194,22 +186,13 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
     setIsTeaseMenuOpen(false)
   }
 
-  const handleBodyPartClick = (bodyPart: CharacterBodyPart) => {
-    showTease(bodyPartTeaseActions[bodyPart])
-  }
-
-  const handleBodyPartKeyDown = (
-    event: React.KeyboardEvent<SVGPolygonElement>,
-    bodyPart: CharacterBodyPart,
-  ) => {
+  const handleCharacterClick = () => {
     if (activeTease) {
       return
     }
 
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      handleBodyPartClick(bodyPart)
-    }
+    setIsMenuOpen(true)
+    setIsTeaseMenuOpen(false)
   }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -316,42 +299,13 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
           <div className={styles.characterImage}>
             <img className={styles.idle} src={idleImage} alt="" />
             <img className={styles.eye} src={eyeImage} alt="" />
-            <svg
-              className={`${styles.hitArea} ${activeTease ? styles.hitAreaDisabled : ''}`}
-              viewBox="0 0 1000 1100"
-            >
-              {(
-                [
-                  {
-                    bodyPart: 'face' as const,
-                    points: '430,80 690,80 835,180 865,390 760,510 445,490 365,300',
-                  },
-                  {
-                    bodyPart: 'chest' as const,
-                    points: '365,430 760,440 885,690 820,835 320,840 215,650',
-                  },
-                  {
-                    bodyPart: 'leg' as const,
-                    points: '320,800 820,800 930,1100 535,1100 495,930 445,1100 95,1100 210,850',
-                  },
-                ]
-              ).map(({ bodyPart, points }) => (
-                <polygon
-                  key={bodyPart}
-                  points={points}
-                  role="button"
-                  tabIndex={activeTease ? -1 : 0}
-                  aria-disabled={Boolean(activeTease)}
-                  aria-label={t(bodyPart)}
-                  onClick={() => {
-                    if (!activeTease) {
-                      handleBodyPartClick(bodyPart)
-                    }
-                  }}
-                  onKeyDown={(event) => handleBodyPartKeyDown(event, bodyPart)}
-                />
-              ))}
-            </svg>
+            <button
+              className={styles.characterHitArea}
+              type="button"
+              aria-label={t('openChoices')}
+              disabled={Boolean(activeTease)}
+              onClick={handleCharacterClick}
+            />
           </div>
         </div>
 
