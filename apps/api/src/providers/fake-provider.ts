@@ -1,4 +1,4 @@
-import type { AiProvider } from "./ai-provider.js";
+import type { AiProvider, TimeContext } from "./ai-provider.js";
 
 const replies = [
   "That sounds really interesting! I’d love to hear a little more about what you mean.",
@@ -10,7 +10,7 @@ const replies = [
 
 export function createFakeProvider(): AiProvider {
   return {
-    async generateReply(_messages) {
+    async generateReply(_messages, _timeContext: TimeContext) {
       await new Promise((resolve) => setTimeout(resolve, 700));
 
       const replyIndex = Math.floor(Math.random() * replies.length);

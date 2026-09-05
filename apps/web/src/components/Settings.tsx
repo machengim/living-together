@@ -8,6 +8,7 @@ import { enablePushNotifications, isWebPushEnabled } from '../pushNotifications'
 type SettingsProps = {
   onBack: () => void
   onExit: () => void
+  onResetGame: () => void
   isProactiveMessageEnabled: boolean
   onProactiveMessageToggle: () => void
 }
@@ -15,6 +16,7 @@ type SettingsProps = {
 function Settings({
   onBack,
   onExit,
+  onResetGame,
   isProactiveMessageEnabled,
   onProactiveMessageToggle,
 }: SettingsProps) {
@@ -22,7 +24,44 @@ function Settings({
   const [settings, setSettings] = useAtom(settingsAtom)
   const [isEnablingNotifications, setIsEnablingNotifications] = useState(false)
   const [notificationStatus, setNotificationStatus] = useState<'idle' | 'enabled' | 'error'>('idle')
+  const [isResettingGame, setIsResettingGame] = useState(false)
+  const [resetGameError, setResetGameError] = useState(false)
+  const [activeAiProvider, setActiveAiProvider] = useState('')
+  const [availableAiProviders, setAvailableAiProviders] = useState<string[]>([])
+  const [isLoadingAiProviders, setIsLoadingAiProviders] = useState(true)
+  const [aiProviderError, setAiProviderError] = useState(false)
   const currentLanguage = settings.language
+
+  useEffect(() => {
+    let isMounted = true
+
+    void fetch('/ai-provider')
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Could not load AI providers: ${response.status}`)
+        }
+
+        return response.json() as Promise<{
+          activeProvider: string
+          availableProviders: string[]
+        }>
+      })
+      .then((data) => {
+        if (!isMounted) return
+        setActiveAiProvider(data.activeProvider)
+        setAvailableAiProviders(data.availableProviders)
+      })
+      .catch(() => {
+        if (isMounted) setAiProviderError(true)
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingAiProviders(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -79,6 +118,50 @@ function Settings({
     }
   }
 
+  const changeAiProvider = async (provider: string) => {
+    const previousProvider = activeAiProvider
+    setActiveAiProvider(provider)
+    setAiProviderError(false)
+
+    try {
+      const response = await fetch('/ai-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`Could not change AI provider: ${response.status}`)
+      }
+    } catch {
+      setActiveAiProvider(previousProvider)
+      setAiProviderError(true)
+    }
+  }
+
+  const resetGame = async () => {
+    if (!window.confirm(t('resetGameConfirm'))) {
+      return
+    }
+
+    setIsResettingGame(true)
+    setResetGameError(false)
+
+    try {
+      const response = await fetch('/reset-game', { method: 'POST' })
+
+      if (!response.ok) {
+        throw new Error(`Game reset failed with status ${response.status}`)
+      }
+
+      onResetGame()
+    } catch {
+      setResetGameError(true)
+    } finally {
+      setIsResettingGame(false)
+    }
+  }
+
   return (
     <main className={styles.settings}>
       <section className={styles.panel} aria-labelledby="settings-title">
@@ -107,6 +190,23 @@ function Settings({
           />
           {t('fullscreen')}
         </label>
+        <label className={styles.providerSelect}>
+          <span>{t('aiProvider')}</span>
+          <select
+            value={activeAiProvider}
+            disabled={isLoadingAiProviders || availableAiProviders.length === 0}
+            onChange={(event) => void changeAiProvider(event.target.value)}
+          >
+            {availableAiProviders.map((provider) => (
+              <option key={provider} value={provider}>
+                {t(`aiProvider${provider.charAt(0).toUpperCase()}${provider.slice(1)}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+        {aiProviderError && (
+          <p role="alert">{t('aiProviderError')}</p>
+        )}
         <button
           className={styles.back}
           type="button"
@@ -131,6 +231,17 @@ function Settings({
               <p role="alert">{t('notificationError')}</p>
             )}
           </>
+        )}
+        <button
+          className={styles.reset}
+          type="button"
+          onClick={resetGame}
+          disabled={isResettingGame}
+        >
+          {isResettingGame ? t('resettingGame') : t('resetGame')}
+        </button>
+        {resetGameError && (
+          <p role="alert">{t('resetGameError')}</p>
         )}
         <button className={styles.back} type="button" onClick={onBack}>
           {t('back')}

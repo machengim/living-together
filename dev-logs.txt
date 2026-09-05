@@ -46,6 +46,96 @@ what's your suggestion for responsive? on the phone the background room and the 
 do it
 
 
+the bubble shows up after i send message and then disappear immediately
+
+
+how do it know it's streaming? didn't see anything on ui or in api log while ollama is def running hard
+
+
+docker compose exec vs docker exec -it command
+
+
+-U and -d mean?
+
+
+how do i log into this postgres db in terminal
+
+
+how to show tables
+
+
+now we need a table to store chat history, it should include who is speaking, timestamp with timezone, and the chat content, give me a plan
+
+
+do it
+
+
+how to set minimax-m3:free for openrouter as the model
+
+
+see a api log: [API] POST /message received
+AI provider request: {
+  "provider": "openrouter",
+  "messages": [
+    {
+      "role": "user",
+      "content": "你是谁"
+    }
+  ],
+  "timeContext": {
+    "utcTime": "2026-09-05T08:17:41.490Z",
+    "timeZone": "Australia/Adelaide",
+    "localTime": "9/5/2026, 5:47:41 PM"
+  }
+}, but didn't get response.
+
+
+it worked. but i want to see the response from ai provider in the api log
+
+
+change the bot name to 莉香, and she is the main character of Tokyo Love Story. and call the user 丸子. update the prompt
+
+
+add a menu item in Settings: 'Reset game', which will clear all previous saved conversations
+
+
+resetGameError, why?
+
+
+POST
+	http://localhost:5173/reset-game 404 not found
+
+
+how to implement a token counter to count how many token will be used in the request?
+
+
+how to count before sending request? not after response
+
+
+is tiktoken can be used to token usage estimate?
+
+
+i saw a log 'normalized memory suggestion', what is this?
+
+
+need to create a docker compose file to provision a postgres db, where to put it?
+
+
+do it
+
+
+need another ai service provider, open router, and be able to switch between models, give me a plan
+
+
+do not consider runtime switch yet, just do similar thing as other provders. now update the plan
+
+
+do it
+
+
+it still shows more than 1 bubbles
+
+
 what's next?
 
 
@@ -883,3 +973,107 @@ do it
 
 switch back the behaviour when clicking on the character, it will show the menu as previous, no matter where it's clicked on the character
 the clickable area is too big. it should be close to the character space
+
+
+on another machine which just git pull yesterday, I run git pull today got permission denied (publickey), why? it's my personal github account
+
+
+I'm pretty sure I run command 'eval' and 'ssh-add' yesterday, what happend
+
+
+what is RAG in terms of ai
+
+
+what is embedding?
+
+
+for this app, a role play chatbot, how to use RAG and embedding? do not code, just answer
+
+
+currently using gemini as provider, but the conversation doesn't feel like human speech
+
+
+currently we show 3 chat bubbles for each, change this to 1
+
+
+currently the bot always got wrong about the time, is it because it's not aware of the user timezone? should we pass local time to the ai provider?
+
+
+why we need to pass both?
+
+
+ok, do it
+
+
+when on mobile, the two bubbles might conflict, how to resolve?
+
+
+do it
+
+
+what's this syntaxt in compose file: POSTGRES_DB: ${POSTGRES_DB:-living_together}
+
+
+need to add another ai provder adapter for local ollama, give me a plan
+
+
+update the code. ollama is installed in local already.
+
+
+if i want to use stream mode for the reponse, what should we do?
+
+
+do it
+
+
+how do it know it's streaming? didn't see anything on ui or in api log while ollama is def running hard
+
+
+api log shows streaming response after everything is done, and nothing shown on the ui bubble?
+
+
+if i want to use stream mode for the reponse, what should we do?
+
+
+do it
+
+
+no, it's the same
+
+
+since the request to ollama may take very long, is it possible to abort the request in the middle?
+
+
+update the ui first. now if the reply is in progress, change the 'Send' button to a 'Cancel' button, and when it's finished, change back
+
+
+now implement the cancel request logic
+
+
+how many history chats are sent to the ai provider at this moment?
+
+
+add a new rule to the prompt like this: [Behavior Rules: Character is realistic and conversational. If the User ignores a question, changes the subject, or leaves an action unresolved, immediately drop the previous topic and follow the User's new lead. Do NOT repeat or press unresolved questions.]
+
+
+why this openrouter response message includes midjourney:      "message": {
+        "role": "assistant",
+        "content": "[midjourney]\\n（生成图片：一只可爱的小猫咪，身上有各种颜色的毛，正在玩弄一根绳 子，背景是温馨的家居环境）\\n\\n（开心地笑了）哇，这只小猫咪好可爱啊！它的毛色真漂亮，像一幅画一样。 它正在玩绳子，看起来很开心呢！",
+        "refusal": null,
+        "reasoning": null
+      }
+
+
+how to set repetition penalty, temperature, min p and top p?
+
+
+use the suggested values for all ai providers
+
+
+why do i need to restart api server? is it watched by tsc?
+
+
+add a menu item in settings to change ai providers, and remove the use of the env var for this purpose. give me a plan
+
+
+do it

@@ -1,4 +1,4 @@
-import type { AiProvider, ChatMessage } from "./ai-provider.js";
+import type { AiProvider, ChatMessage, TimeContext } from "./ai-provider.js";
 import { normalizeMemorySuggestion, type Memory } from "../memory/memory-normalizer.js";
 import { defaultEmotionalState, formatEmotionalState } from "../character/emotional-state.js";
 
@@ -14,11 +14,10 @@ type GeminiResponse = {
 
 export function createGeminiProvider(): AiProvider {
   return {
-    async generateReply(messages: ChatMessage[]) {
+    async generateReply(messages: ChatMessage[], timeContext: TimeContext) {
       const apiKey = process.env.GEMINI_API_KEY;
-      const currentDateTime = new Date().toISOString();
-      const userNickname = process.env.USER_NICKNAME || "亲爱的";
-      const currentScene = "Rica and the user are together in the living room.";
+      const userNickname = process.env.USER_NICKNAME || "丸子";
+      const currentScene = "莉香 and 丸子 are together in the living room.";
 
       if (!apiKey || apiKey === "your_gemini_api_key_here") {
         throw new Error("GEMINI_API_KEY is not configured");
@@ -27,10 +26,13 @@ export function createGeminiProvider(): AiProvider {
       const requestBody = {
         model: process.env.GEMINI_MODEL || "gemini-3.7-flash",
         input: [
-          "You are Rica, the girlfriend of the user. Stay in character.",
+          "You are 莉香, the main character from Tokyo Love Story and the girlfriend of the user. Stay in character.",
+          "[Behavior Rules: Character is realistic and conversational. If the User ignores a question, changes the subject, or leaves an action unresolved, immediately drop the previous topic and follow the User's new lead. Do NOT repeat or press unresolved questions.]",
           `The user's nickname is ${userNickname}.`,
           "Never output template placeholders such as ${user} or ${userNickname}; use the actual nickname or a natural form of address.",
-          `Current date and time: ${currentDateTime}`,
+          `Current UTC time: ${timeContext.utcTime}`,
+          `User timezone: ${timeContext.timeZone}`,
+          `User local time: ${timeContext.localTime}`,
           `Current scene: ${currentScene}`,
           formatEmotionalState(defaultEmotionalState),
           "",
@@ -40,6 +42,8 @@ export function createGeminiProvider(): AiProvider {
         generation_config: {
           thinking_level: "low",
           thinking_summaries: "none",
+          temperature: 0.8,
+          top_p: 0.9,
         },
       };
 

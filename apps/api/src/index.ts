@@ -4,8 +4,21 @@ import { createServer } from "node:http";
 import express from "express";
 import webpush from "web-push";
 import { WebSocket, WebSocketServer } from "ws";
-import { createAiProvider } from "./providers/provider-factory.js";
-import type { ChatMessage } from "./providers/ai-provider.js";
+import {
+  clearChatHistory,
+  getActiveAiProvider,
+  getRecentMessages,
+  initializeDatabase,
+  saveMessage,
+  setActiveAiProvider,
+} from "./database.js";
+import {
+  createAiProvider,
+  getAvailableAiProviders,
+  isAiProviderName,
+  type AiProviderName,
+} from "./providers/provider-factory.js";
+import type { ChatMessage, TimeContext } from "./providers/ai-provider.js";
 
 const app = express();
 const server = createServer(app);
@@ -13,10 +26,11 @@ const websocketServer = new WebSocketServer({ server, path: "/ws" });
 const port = Number(process.env.PORT) || 3000;
 const clients = new Set<WebSocket>();
 const proactiveMessageTimers = new Map<WebSocket, ReturnType<typeof setInterval>>();
+const activeReplyControllers = new Map<string, AbortController>();
 const pushSubscriptions = new Map<string, webpush.PushSubscription>();
 let disconnectedPushSent = false;
-const aiProvider = createAiProvider();
-const conversationHistory: ChatMessage[] = [];
+let activeAiProviderName: AiProviderName = "ollama";
+let aiProvider = createAiProvider(activeAiProviderName);
 const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
 const vapidSubject = process.env.VAPID_SUBJECT;
@@ -55,8 +69,23 @@ websocketServer.on("connection", (client) => {
       typeof data !== "object" ||
       data === null ||
       !("type" in data) ||
-      !("enabled" in data) ||
+      typeof data.type !== "string"
+    ) {
+      return;
+    }
+
+    if (
+      data.type === "cancel-message" &&
+      "id" in data &&
+      typeof data.id === "string"
+    ) {
+      activeReplyControllers.get(data.id)?.abort();
+      return;
+    }
+
+    if (
       data.type !== "proactive-toggle" ||
+      !("enabled" in data) ||
       typeof data.enabled !== "boolean"
     ) {
       return;
@@ -101,6 +130,40 @@ websocketServer.on("connection", (client) => {
 
 app.get("/api/health", (_request, response) => {
   response.json({ status: "ok" });
+});
+
+app.get("/ai-provider", (_request, response) => {
+  response.json({
+    activeProvider: activeAiProviderName,
+    availableProviders: getAvailableAiProviders(),
+  });
+});
+
+app.post("/ai-provider", async (request, response) => {
+  const provider = request.body?.provider;
+
+  if (typeof provider !== "string" || !isAiProviderName(provider)) {
+    response.status(400).json({ error: "Unsupported AI provider" });
+    return;
+  }
+
+  if (!getAvailableAiProviders().includes(provider)) {
+    response.status(503).json({ error: "AI provider is not configured" });
+    return;
+  }
+
+  try {
+    const nextProvider = createAiProvider(provider);
+    const previousProvider = activeAiProviderName;
+    activeAiProviderName = provider;
+    aiProvider = nextProvider;
+    await setActiveAiProvider(provider);
+    console.log(`[API] AI provider changed from ${previousProvider} to ${provider}`);
+    response.json({ activeProvider: provider });
+  } catch (error) {
+    console.error("[API] AI provider change failed:", error);
+    response.status(500).json({ error: "Could not change AI provider" });
+  }
 });
 
 app.get("/push-public-key", (_request, response) => {
@@ -148,13 +211,71 @@ function hasOpenWebSocketClient() {
 }
 
 function broadcastMessage(message: string) {
-  const event = JSON.stringify({ type: "message", message });
+  broadcastEvent({ type: "message", message });
+}
+
+function broadcastEvent(eventData: Record<string, unknown>) {
+  const event = JSON.stringify(eventData);
 
   for (const client of clients) {
     if (client.readyState === WebSocket.OPEN) {
       client.send(event);
     }
   }
+}
+
+function createReplyId() {
+  return `${Date.now()}-${Math.random()}`;
+}
+
+async function generateAndBroadcastReply(
+  provider: ReturnType<typeof createAiProvider>,
+  messages: ChatMessage[],
+  timeContext: TimeContext,
+) {
+  if (provider.generateReplyStream) {
+    const replyId = createReplyId();
+    const abortController = new AbortController();
+    activeReplyControllers.set(replyId, abortController);
+    let assistantMessage = "";
+    broadcastEvent({ type: "message-start", id: replyId });
+
+    try {
+      for await (const chunk of provider.generateReplyStream(
+        messages,
+        timeContext,
+        abortController.signal,
+      )) {
+        assistantMessage += chunk;
+        broadcastEvent({ type: "message-delta", id: replyId, text: chunk });
+      }
+
+      if (!assistantMessage.trim()) {
+        throw new Error("AI provider returned an empty streamed response");
+      }
+
+      await saveMessage({ role: "assistant", content: assistantMessage });
+      broadcastEvent({ type: "message-end", id: replyId, message: assistantMessage });
+    } catch (error) {
+      if (abortController.signal.aborted) {
+        broadcastEvent({ type: "message-cancelled", id: replyId });
+      } else {
+        broadcastEvent({ type: "message-error", id: replyId });
+      }
+      activeReplyControllers.delete(replyId);
+      throw error;
+    }
+
+    activeReplyControllers.delete(replyId);
+  } else {
+    const assistantMessage = await provider.generateReply(messages, timeContext);
+    await saveMessage({ role: "assistant", content: assistantMessage });
+    broadcastMessage(assistantMessage);
+  }
+
+  const updatedMessages = await getRecentMessages(6);
+  const memories = await provider.extractMemories(updatedMessages);
+  console.log("Normalized memory suggestions:", JSON.stringify(memories, null, 2));
 }
 
 async function sendDisconnectedPushNotification() {
@@ -198,6 +319,19 @@ async function sendDisconnectedPushNotification() {
   }));
 }
 
+app.post("/reset-game", (_request, response) => {
+  void clearChatHistory()
+    .then(() => {
+      broadcastEvent({ type: "reset" });
+      console.log("[API] Game reset");
+      response.json({ status: "reset" });
+    })
+    .catch((error) => {
+      console.error("[API] Game reset failed:", error);
+      response.status(500).json({ error: "Could not reset the game" });
+    });
+});
+
 app.post("/message", async (request, response) => {
   console.log("[API] POST /message received");
 
@@ -209,36 +343,44 @@ app.post("/message", async (request, response) => {
   }
 
   const userMessage = request.body.trim();
-  conversationHistory.push({ role: "user", content: userMessage });
-  const recentMessages = conversationHistory.slice(-6);
+  const timeContext: TimeContext = {
+    utcTime: new Date().toISOString(),
+    timeZone: request.header("x-user-timezone") || "UTC",
+    localTime: request.header("x-user-local-time") || new Date().toISOString(),
+  };
+
+  try {
+    await saveMessage({ role: "user", content: userMessage });
+  } catch (error) {
+    console.error("Failed to save user message:", error);
+    response.status(503).json({ error: "Could not save the message" });
+    return;
+  }
+
+  let recentMessages: ChatMessage[];
+
+  try {
+    recentMessages = await getRecentMessages(6);
+  } catch (error) {
+    console.error("Failed to load chat history:", error);
+    response.status(503).json({ error: "Could not load chat history" });
+    return;
+  }
 
   console.log(
     "AI provider request:",
     JSON.stringify(
       {
-        provider: process.env.AI_PROVIDER || "openai",
+        provider: activeAiProviderName,
         messages: recentMessages,
+        timeContext,
       },
       null,
       2,
     ),
   );
 
-  void aiProvider
-    .generateReply(recentMessages)
-    .then((assistantMessage) => {
-      conversationHistory.push({ role: "assistant", content: assistantMessage });
-      broadcastMessage(assistantMessage);
-
-      void aiProvider
-        .extractMemories(conversationHistory.slice(-6))
-        .then((memories) => {
-          console.log("Normalized memory suggestions:", JSON.stringify(memories, null, 2));
-        })
-        .catch((error) => {
-          console.error("Memory extraction failed:", error);
-        });
-    })
+  void generateAndBroadcastReply(aiProvider, recentMessages, timeContext)
     .catch((error) => {
       console.error("AI provider request failed:", error);
     });
@@ -246,6 +388,20 @@ app.post("/message", async (request, response) => {
   response.status(202).json({ status: "accepted" });
 });
 
-server.listen(port, () => {
-  console.log(`API server listening on http://localhost:${port}`);
-});
+void initializeDatabase()
+  .then(async () => {
+    const storedProvider = await getActiveAiProvider();
+    if (isAiProviderName(storedProvider) && getAvailableAiProviders().includes(storedProvider)) {
+      activeAiProviderName = storedProvider;
+      aiProvider = createAiProvider(storedProvider);
+    }
+
+    server.listen(port, () => {
+      console.log(`API server listening on http://localhost:${port}`);
+      console.log(`[API] AI provider: ${activeAiProviderName}; streaming: ${Boolean(aiProvider.generateReplyStream)}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Database initialization failed:", error);
+    process.exitCode = 1;
+  });

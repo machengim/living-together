@@ -8,6 +8,8 @@ export default defineConfig({
     host: true,
     proxy: {
       '/message': 'http://127.0.0.1:3000',
+      '/reset-game': 'http://127.0.0.1:3000',
+      '/ai-provider': 'http://127.0.0.1:3000',
       '/push-public-key': 'http://127.0.0.1:3000',
       '/push-subscription': 'http://127.0.0.1:3000',
       '/ws': {

@@ -23,6 +23,7 @@
   "disableProactiveMessage": "禁用主动消息",
   "chatPlaceholder": "输入消息...",
   "send": "发送",
+  "cancel": "取消",
   "sendError": "消息发送失败，请重试。",
   "language": "语言",
   "english": "英语",
@@ -33,8 +34,19 @@
   "chest": "胸部",
   "leg": "腿",
   "fullscreen": "全屏",
+  "aiProvider": "AI 服务提供商",
+  "aiProviderError": "无法更改 AI 服务提供商。",
+  "aiProviderFake": "模拟",
+  "aiProviderOpenai": "OpenAI",
+  "aiProviderGemini": "Gemini",
+  "aiProviderOpenrouter": "OpenRouter",
+  "aiProviderOllama": "Ollama",
   "enableNotifications": "启用通知",
   "notificationsEnabled": "通知已启用",
   "notificationError": "无法启用通知。",
   "backToTitle": "返回标题页"
+  ,"resetGame": "重置游戏"
+  ,"resettingGame": "正在重置..."
+  ,"resetGameConfirm": "确定要重置游戏并清除之前的所有对话吗？"
+  ,"resetGameError": "游戏重置失败，请重试。"
 }

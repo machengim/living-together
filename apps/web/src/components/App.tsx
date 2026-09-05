@@ -12,6 +12,7 @@ function App() {
   const setView = useSetAtom(viewAtom)
   const [isSettingsVisible, setSettingsVisible] = useState(false)
   const [isProactiveMessageEnabled, setIsProactiveMessageEnabled] = useState(false)
+  const [gameResetVersion, setGameResetVersion] = useState(0)
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -34,6 +35,7 @@ function App() {
       />
     ) : (
       <LivingRoom
+        key={gameResetVersion}
         onChangeRoom={() => setView('dark')}
         onSettings={openSettings}
         isProactiveMessageEnabled={isProactiveMessageEnabled}
@@ -46,6 +48,10 @@ function App() {
       {isSettingsVisible && (
         <Settings
           onBack={() => setSettingsVisible(false)}
+          onResetGame={() => {
+            setGameResetVersion((version) => version + 1)
+            setSettingsVisible(false)
+          }}
           isProactiveMessageEnabled={isProactiveMessageEnabled}
           onProactiveMessageToggle={() => setIsProactiveMessageEnabled((enabled) => !enabled)}
           onExit={() => {

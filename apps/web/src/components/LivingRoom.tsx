@@ -36,6 +36,7 @@ type ChatBubble = {
   id: string
   text: string
   createdAt: number
+  isStreaming?: boolean
 }
 
 const bubbleLifetime = 60_000
@@ -68,9 +69,11 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
   const [sentMessages, setSentMessages] = useState<ChatBubble[]>([])
   const [characterMessages, setCharacterMessages] = useState<ChatBubble[]>([])
   const [isSending, setIsSending] = useState(false)
+  const [isReplyInProgress, setIsReplyInProgress] = useState(false)
   const [sendError, setSendError] = useState('')
   const proactiveMessageEnabledRef = useRef(isProactiveMessageEnabled)
   const socketRef = useRef<WebSocket | null>(null)
+  const streamingReplyIdRef = useRef<string | null>(null)
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -113,16 +116,109 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
             typeof data === 'object' &&
             data !== null &&
             'type' in data &&
+            data.type === 'reset'
+          ) {
+            setSentMessages([])
+            setIsReplyInProgress(false)
+            streamingReplyIdRef.current = null
+            setCharacterMessages([])
+            return
+          }
+
+          if (
+            typeof data === 'object' &&
+            data !== null &&
+            'type' in data &&
+            data.type === 'message-start' &&
+            'id' in data &&
+            typeof data.id === 'string'
+          ) {
+            setSentMessages([])
+            setIsReplyInProgress(true)
+            streamingReplyIdRef.current = data.id
+            setCharacterMessages([{
+              id: data.id,
+              text: '…',
+              createdAt: Date.now(),
+              isStreaming: true,
+            }])
+            return
+          }
+
+          if (
+            typeof data === 'object' &&
+            data !== null &&
+            'type' in data &&
+            data.type === 'message-delta' &&
+            'id' in data &&
+            'text' in data &&
+            typeof data.id === 'string' &&
+            typeof data.text === 'string'
+          ) {
+            const deltaText = data.text
+            setIsReplyInProgress(true)
+            setCharacterMessages((messages) => messages.map((bubble) =>
+              bubble.id === data.id
+                ? {
+                    ...bubble,
+                    text: bubble.text === '…' ? deltaText : bubble.text + deltaText,
+                    isStreaming: true,
+                  }
+                : bubble,
+            ))
+            return
+          }
+
+          if (
+            typeof data === 'object' &&
+            data !== null &&
+            'type' in data &&
+            data.type === 'message-end' &&
+            'id' in data &&
+            typeof data.id === 'string'
+          ) {
+            if ('message' in data && typeof data.message === 'string') {
+              const finalMessage = data.message
+              setIsReplyInProgress(false)
+              streamingReplyIdRef.current = null
+              setCharacterMessages((messages) => messages.map((bubble) =>
+                bubble.id === data.id
+                  ? { ...bubble, text: finalMessage, createdAt: Date.now(), isStreaming: false }
+                  : bubble,
+              ))
+            }
+            return
+          }
+
+          if (
+            typeof data === 'object' &&
+            data !== null &&
+            'type' in data &&
+            (data.type === 'message-error' || data.type === 'message-cancelled')
+          ) {
+            setIsReplyInProgress(false)
+            streamingReplyIdRef.current = null
+            setCharacterMessages([])
+            if (data.type === 'message-error') {
+              setSendError(t('sendError'))
+            }
+            return
+          }
+
+          if (
+            typeof data === 'object' &&
+            data !== null &&
+            'type' in data &&
             'message' in data &&
             data.type === 'message' &&
             typeof data.message === 'string'
           ) {
             const nextCharacterMessage = data.message
 
-            setCharacterMessages((messages) => [
-              ...messages,
-              createChatBubble(nextCharacterMessage),
-            ])
+            setIsReplyInProgress(false)
+            streamingReplyIdRef.current = null
+            setSentMessages([])
+            setCharacterMessages([createChatBubble(nextCharacterMessage)])
           }
         } catch {
           // Ignore malformed WebSocket messages.
@@ -165,17 +261,29 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
   }, [activeTease])
 
   useEffect(() => {
-    const timeoutIds = sentMessages.map((bubble) => window.setTimeout(() => {
-      setSentMessages((messages) => messages.filter((message) => message.id !== bubble.id))
-    }, Math.max(0, bubbleLifetime - (Date.now() - bubble.createdAt))))
+    const timeoutIds = sentMessages.flatMap((bubble) => {
+      if (bubble.isStreaming) {
+        return []
+      }
+
+      return [window.setTimeout(() => {
+        setSentMessages((messages) => messages.filter((message) => message.id !== bubble.id))
+      }, Math.max(0, bubbleLifetime - (Date.now() - bubble.createdAt)))]
+    })
 
     return () => timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId))
   }, [sentMessages])
 
   useEffect(() => {
-    const timeoutIds = characterMessages.map((bubble) => window.setTimeout(() => {
-      setCharacterMessages((messages) => messages.filter((message) => message.id !== bubble.id))
-    }, Math.max(0, bubbleLifetime - (Date.now() - bubble.createdAt))))
+    const timeoutIds = characterMessages.flatMap((bubble) => {
+      if (bubble.isStreaming) {
+        return []
+      }
+
+      return [window.setTimeout(() => {
+        setCharacterMessages((messages) => messages.filter((message) => message.id !== bubble.id))
+      }, Math.max(0, bubbleLifetime - (Date.now() - bubble.createdAt)))]
+    })
 
     return () => timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId))
   }, [characterMessages])
@@ -204,12 +312,19 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
     }
 
     setIsSending(true)
+    setIsReplyInProgress(true)
     setSendError('')
+    setCharacterMessages([])
+    setSentMessages([createChatBubble(nextMessage)])
 
     try {
       const response = await fetch('/message', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: {
+          'Content-Type': 'text/plain',
+          'X-User-Timezone': Intl.DateTimeFormat().resolvedOptions().timeZone,
+          'X-User-Local-Time': new Date().toLocaleString(),
+        },
         body: nextMessage,
       })
 
@@ -217,12 +332,10 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
         throw new Error(`Message request failed with status ${response.status}`)
       }
 
-      setSentMessages((messages) => [
-        ...messages,
-        createChatBubble(nextMessage),
-      ])
       setMessage('')
     } catch {
+      setSentMessages([])
+      setIsReplyInProgress(false)
       setSendError(t('sendError'))
     } finally {
       setIsSending(false)
@@ -233,6 +346,19 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
     if (activeTease) {
       setActiveTease(null)
     }
+  }
+
+  const handleCancelReply = () => {
+    const replyId = streamingReplyIdRef.current
+
+    if (!replyId || socketRef.current?.readyState !== WebSocket.OPEN) {
+      return
+    }
+
+    socketRef.current.send(JSON.stringify({
+      type: 'cancel-message',
+      id: replyId,
+    }))
   }
 
   return (
@@ -275,8 +401,12 @@ function LivingRoom({ onChangeRoom, onSettings, isProactiveMessageEnabled }: Liv
             placeholder={t('chatPlaceholder')}
             aria-label={t('chatPlaceholder')}
           />
-          <button type="submit" disabled={isSending}>
-            {t('send')}
+          <button
+            type={isReplyInProgress ? 'button' : 'submit'}
+            onClick={isReplyInProgress ? handleCancelReply : undefined}
+            disabled={isSending && !isReplyInProgress}
+          >
+            {t(isReplyInProgress ? 'cancel' : 'send')}
           </button>
         </form>
         {sendError && (
